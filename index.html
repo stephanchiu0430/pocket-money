@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的零用錢</title>
+<meta name="theme-color" content="#1F6FB2">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF2EE; --sheet:#F8FBF9; --ink:#1E2B3A; --muted:#62716B; --rule:#C7D5CC;
+  --out:#A33A4C; --in:#1B7A5A; --pend:#8C9086; --accent:#1F6FB2; --on-accent:#FFFFFF;
+  --body:"LXGW WenKai TC","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root[data-child="Chantel"]{--accent:#6A4C9C}
+:root[data-child="Luke"]{--accent:#1F6FB2}
+:root[data-child="Ian"]{--accent:#2D7D4F}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#111715; --sheet:#18201D; --ink:#E1EAE5; --muted:#93A39C; --rule:#2C3934;
+    --out:#E4889A; --in:#62C99E; --pend:#8E948A; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111715; --sheet:#18201D; --ink:#E1EAE5; --muted:#93A39C; --rule:#2C3934;
+  --out:#E4889A; --in:#62C99E; --pend:#8E948A; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding-bottom:28px}
+
+/* 封面 */
+.cover{background:var(--accent);color:var(--on-accent);padding:18px 20px 24px;border-radius:0 0 22px 22px}
+.who{display:flex;align-items:center;gap:.35em;font-size:1.1rem}
+.who b{font-weight:700}
+.gear{margin-left:auto;background:transparent;border:0;color:inherit;opacity:.8;min-width:44px;min-height:44px;font-size:1.25rem;border-radius:12px}
+.bal-label{margin-top:10px;font-size:.92rem;opacity:.85}
+.bal{font-family:var(--num);font-weight:600;font-size:clamp(2.6rem,13vw,3.7rem);line-height:1.08;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pend{font-size:.9rem;opacity:.9;min-height:1.3em}
+.sync{margin-top:12px;font-size:.85rem;opacity:.88;display:flex;align-items:center;gap:.45em}
+.sync::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.9;flex:none}
+.sync.waiting::before{background:#FFD76A;opacity:1}
+
+/* 按鈕 */
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 14px 0}
+.act{min-height:68px;border-radius:16px;border:2px solid;font-size:1.3rem;font-weight:700;letter-spacing:.05em}
+.act.out{color:var(--out);border-color:var(--out);background:color-mix(in srgb,var(--out) 8%,var(--sheet))}
+.act.in{color:var(--in);border-color:var(--in);background:color-mix(in srgb,var(--in) 8%,var(--sheet))}
+.act:active{transform:translateY(1px)}
+.count-link{display:block;margin:12px auto 0;background:transparent;border:0;color:var(--muted);font-size:.95rem;text-decoration:underline;text-underline-offset:4px;min-height:44px;padding:0 12px}
+
+/* 存摺 */
+.book{margin:14px 12px 0;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.grid{display:grid;grid-template-columns:3.1em minmax(0,1fr) 4.5em 4.5em 4.9em;align-items:center}
+.book-head{font-size:.78rem;color:var(--muted);padding:8px 8px 6px;border-bottom:3px double var(--rule)}
+.book-head span:nth-child(n+3){text-align:right}
+.month{padding:5px 10px;font-size:.8rem;color:var(--muted);background:var(--paper);border-bottom:1px solid var(--rule)}
+.row{width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--rule);padding:9px 8px;min-height:52px;font-size:.95rem}
+.row:last-child{border-bottom:0}
+.c-date{font-family:var(--num);font-size:.8rem;color:var(--muted)}
+.c-desc{padding-right:6px;overflow-wrap:anywhere}
+.c-desc small{display:block;color:var(--muted);font-size:.8rem;line-height:1.35}
+.c-out,.c-in,.c-bal{font-family:var(--num);font-size:.86rem;text-align:right;font-variant-numeric:tabular-nums;border-left:1px dotted var(--rule);align-self:stretch;display:flex;align-items:center;justify-content:flex-end;padding:0 5px 0 4px}
+.c-out{color:var(--out)}
+.c-in{color:var(--in)}
+.row.pending .c-in,.row.rejected .c-in{color:var(--pend)}
+.row.voided .c-desc,.row.voided .c-out,.row.voided .c-in,.row.rejected .c-in{text-decoration:line-through;opacity:.55}
+.tag{display:inline-block;margin-left:.35em;padding:0 .45em;border:1px solid var(--rule);border-radius:999px;font-size:.72rem;color:var(--muted);vertical-align:1px;text-decoration:none}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#E0A800;margin-left:.4em;vertical-align:2px}
+.empty{padding:28px 18px;color:var(--muted);text-align:center;margin:0}
+
+/* 底部面板 */
+dialog#sheet{border:0;padding:0;width:min(100%,520px);max-width:100%;margin:auto auto 0;border-radius:20px 20px 0 0;background:var(--sheet);color:var(--ink);max-height:92vh}
+dialog#sheet::backdrop{background:rgba(15,25,22,.5)}
+dialog#sheet[open]{animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){dialog#sheet[open]{animation:none}}
+@media (min-width:600px){dialog#sheet{margin:auto;border-radius:20px}}
+.sheet-in{padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px))}
+.sheet-in h2{margin:0 0 6px;font-size:1.35rem}
+.hint{margin:4px 0 10px;color:var(--muted);font-size:.92rem}
+.amt{display:flex;align-items:baseline;gap:.2em;border-bottom:2px solid var(--ink);margin:10px 0 16px;font-family:var(--num);font-size:2.6rem;font-weight:600}
+.amt span{color:var(--muted)}
+.amt input{border:0;background:transparent;width:100%;font-family:var(--num);font-size:inherit;font-weight:inherit;outline:none;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.chip{border:1.5px solid var(--rule);background:var(--paper);border-radius:999px;padding:8px 14px;min-height:44px;font-size:1rem}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.note,.field input,.pin{width:100%;border:1.5px solid var(--rule);background:var(--paper);border-radius:12px;padding:11px 12px;font-size:1rem}
+.field{display:block;margin:10px 0;font-size:.9rem;color:var(--muted)}
+.field input{margin-top:4px;color:var(--ink)}
+.pin{font-family:var(--num);font-size:1.6rem;letter-spacing:.3em;text-align:center}
+.warn{color:var(--out);font-size:.92rem;margin:8px 0 0}
+.ask{flex-basis:100%;margin:0 0 4px;font-size:1rem}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.btns button{flex:1;min-height:52px;border-radius:14px;font-size:1.05rem;font-weight:700}
+.primary{background:var(--accent);color:var(--on-accent);border:0}
+.ghost{background:transparent;border:1.5px solid var(--rule)}
+.danger{color:var(--out);border-color:var(--out)}
+.detail dt{color:var(--muted);font-size:.85rem;margin-top:10px}
+.detail dd{margin:0;font-size:1.05rem}
+.result{font-family:var(--num);font-size:2rem;font-weight:600;margin:6px 0}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="cover">
+    <div class="who"><b id="kid">　</b><span>的零用錢</span><button class="gear" id="gear" aria-label="家長設定">⚙︎</button></div>
+    <div class="bal-label">現在可以用</div>
+    <div class="bal" id="bal">$0</div>
+    <div class="pend" id="pend"></div>
+    <div class="sync" id="sync"></div>
+  </header>
+  <section class="actions">
+    <button class="act out" data-act="out">花錢</button>
+    <button class="act in" data-act="in">收到錢</button>
+  </section>
+  <button class="count-link" data-act="count">對一對：手上的錢跟帳上一樣嗎？</button>
+  <section class="book" aria-label="存摺">
+    <div class="book-head grid"><span>日期</span><span>摘要</span><span>支出</span><span>存入</span><span>餘額</span></div>
+    <div id="rows"></div>
+  </section>
+</main>
+<dialog id="sheet"><div class="sheet-in" id="sheetIn"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const KIDS={Chantel:'喬琳',Luke:'顯喻',Ian:'顯英'};
+const COLORS={Chantel:'#6A4C9C',Luke:'#1F6FB2',Ian:'#2D7D4F'};
+const CATS={out:['吃喝','遊戲娛樂','文具書籍','交通','送禮','存起來','其他'],in:['紅包','獎勵','打工、賣東西','其他']};
+const P='pm1:';
+const ld=(k,d)=>{try{const v=localStorage.getItem(P+k);return v?JSON.parse(v):d}catch(e){return d}};
+const st=(k,v)=>{try{localStorage.setItem(P+k,JSON.stringify(v))}catch(e){}};
+let cfg=ld('cfg',null);
+let chain=ld('chain',{seq:0,lastHash:'GENESIS'});
+let pending=ld('pending',[]);
+let server=ld('server',{entries:[],at:0});
+let syncing=false, lastErr='';
+const $=s=>document.querySelector(s);
+const sheet=$('#sheet'), sheetIn=$('#sheetIn');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(n<0?'-':'')+'$'+Math.abs(Number(n)||0).toLocaleString('zh-TW');
+const two=n=>String(n).padStart(2,'0');
+
+async function sha(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+// 必須跟 Apps Script 的 hashOf() 完全一樣
+const canon=e=>[e.id,e.seq,e.ts,e.child,e.device,e.type,e.amount,e.cat,e.note,e.ref,e.expected,e.flags,e.prev].map(v=>v==null?'':String(v)).join('|');
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
+
+/* ---------- 帳本計算 ---------- */
+function allEntries(){
+  const ids=new Set(server.entries.map(e=>e.id));
+  const mine=pending.filter(p=>!ids.has(p.id)).map(p=>({...p,source:'kid',local:true}));
+  return server.entries.concat(mine).map(e=>({...e,amount:Number(e.amount)||0}))
+    .sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:(a.seq||0)-(b.seq||0));
+}
+function compute(){
+  const es=allEntries();
+  const voided=new Set(es.filter(e=>e.type==='void').map(e=>e.ref));
+  let bal=0,pendIn=0;const rows=[];
+  for(const e of es){
+    if(e.type==='void')continue;
+    let eff=0,state='';
+    if(voided.has(e.id))state='voided';
+    else if(e.type==='out')eff=-e.amount;
+    else if(e.type==='adj')eff=e.amount;
+    else if(e.type==='in'){
+      if(e.source==='parent'||e.status==='ok')eff=e.amount;
+      else if(e.status==='rejected')state='rejected';
+      else{state='pending';pendIn+=e.amount}
+    } else if(e.type==='count')state='count';
+    bal+=eff;rows.push({e,eff,bal,state});
+  }
+  return {bal,pendIn,rows};
+}
+
+/* ---------- 畫面 ---------- */
+function syncText(){
+  if(!cfg.url)return['還沒設定：紀錄只存在這支手機',true];
+  if(syncing)return['傳給爸爸中…',true];
+  const n=pending.length;
+  if(n)return[`${n} 筆還沒傳給爸爸${navigator.onLine?'':'（離線中，有網路會自動傳）'}`,true];
+  if(server.at){const d=new Date(server.at);return[`都傳給爸爸了（${d.getMonth()+1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}）`,false]}
+  return['還沒連上爸爸的帳本',true];
+}
+function rowHtml(r){
+  const e=r.e,d=new Date(e.ts);
+  let desc=e.source==='parent'?`爸爸給：${esc(e.cat)}`:esc(e.cat);
+  let outA='',inA='',tags='';
+  if(e.type==='out')outA=money(e.amount);
+  else if(e.type==='in')inA=money(e.amount);
+  else if(e.type==='adj'){if(e.amount<0){outA=money(-e.amount);desc=`爸爸扣：${esc(e.cat)}`}else inA=money(e.amount)}
+  if(e.type==='count'){
+    const diff=e.amount-Number(e.expected);
+    desc=`盤點：手上 ${money(e.amount)}<small>${diff===0?'跟帳上一樣':(diff>0?'比帳上多 ':'比帳上少 ')+money(Math.abs(diff))}</small>`;
+  } else if(e.note)desc+=`<small>${esc(e.note)}</small>`;
+  if(r.state==='pending')tags+='<span class="tag">待確認</span>';
+  if(r.state==='rejected')tags+='<span class="tag">爸爸說不算</span>';
+  if(r.state==='voided')tags+='<span class="tag">已撤銷</span>';
+  if(e.local)tags+='<span class="dot" title="還沒傳給爸爸"></span>';
+  return `<button class="row grid ${r.state}" data-id="${esc(e.id)}"><span class="c-date">${d.getMonth()+1}/${d.getDate()}</span><span class="c-desc">${desc}${tags}</span><span class="c-out">${outA}</span><span class="c-in">${inA}</span><span class="c-bal">${r.eff?money(r.bal):''}</span></button>`;
+}
+function render(){
+  if(!cfg)return;
+  document.documentElement.dataset.child=cfg.child;
+  document.querySelector('meta[name=theme-color]').content=COLORS[cfg.child];
+  $('#kid').textContent=cfg.child;
+  const {bal,pendIn,rows}=compute();
+  $('#bal').textContent=money(bal);
+  $('#pend').textContent=pendIn?`另外 ${money(pendIn)} 等爸爸確認`:'';
+  const [t,w]=syncText();const s=$('#sync');s.textContent=t;s.classList.toggle('waiting',w);
+  let html='',cur='';
+  for(const r of rows.slice().reverse()){
+    const d=new Date(r.e.ts),m=`${d.getFullYear()} 年 ${d.getMonth()+1} 月`;
+    if(m!==cur){html+=`<div class="month">${m}</div>`;cur=m}
+    html+=rowHtml(r);
+  }
+  $('#rows').innerHTML=html||'<p class="empty">還沒有紀錄。花了錢或收到錢，按上面的按鈕記一筆。</p>';
+}
+
+/* ---------- 面板 ---------- */
+let sheetLocked=false;
+function showSheet(html,locked=false){sheetLocked=locked;sheetIn.innerHTML=html;if(!sheet.open)sheet.showModal()}
+function closeSheet(){sheetLocked=false;sheet.close()}
+sheet.addEventListener('cancel',e=>{if(sheetLocked)e.preventDefault()});
+sheet.addEventListener('click',e=>{
+  if(e.target.closest('[data-close]'))closeSheet();
+  else if(e.target===sheet&&!sheetLocked)closeSheet();
+});
+
+/* ---------- 新增紀錄（只能新增，不能改） ---------- */
+async function addEntry(f){
+  const seq=chain.seq+1;
+  const e={id:'K-'+cfg.device.slice(0,8)+'-'+seq,seq,ts:new Date().toISOString(),child:cfg.child,device:cfg.device,
+    type:f.type,amount:f.amount,cat:f.cat||'',note:f.note||'',ref:f.ref||'',
+    expected:f.expected===undefined?'':f.expected,flags:f.flags||'',prev:chain.lastHash};
+  e.hash=await sha(canon(e));
+  chain={seq,lastHash:e.hash};pending.push(e);
+  st('chain',chain);st('pending',pending);
+  render();sync();
+  return e;
+}
+
+function openEntry(type){
+  const isCount=type==='count';
+  const title={out:'花了多少錢？',in:'收到多少錢？',count:'手上現在有多少錢？'}[type];
+  let h=`<h2>${title}</h2>`;
+  if(isCount)h+='<p class="hint">錢包、存錢筒、口袋裡的都算。</p>';
+  h+='<label class="amt"><span>$</span><input id="f-amt" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="金額"></label>';
+  if(!isCount){
+    h+=`<div class="chips" role="group" aria-label="分類">${CATS[type].map(c=>`<button type="button" class="chip" aria-pressed="false" data-cat="${c}">${c}</button>`).join('')}</div>`;
+    h+=`<input id="f-note" class="note" maxlength="40" placeholder="${type==='out'?'買了什麼？例：珍奶':'誰給的？為什麼？'}" aria-label="說明">`;
+  }
+  if(type==='in')h+='<p class="hint">爸爸確認後，才會算進可以用的錢。</p>';
+  h+='<p id="f-warn" class="warn" hidden></p><div class="btns" id="f-btns"><button class="ghost" data-close>取消</button><button class="primary" id="f-save">記下來</button></div>';
+  showSheet(h);
+  let cat='';
+  sheetIn.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;sheetIn.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  const amtEl=$('#f-amt');
+  amtEl.oninput=()=>{
+    amtEl.value=amtEl.value.replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,6);
+    if(type==='out'){const a=+amtEl.value,b=compute().bal,w=$('#f-warn');
+      if(a>b){w.hidden=false;w.textContent=`比你現在可以用的錢多 ${money(a-b)}。還是可以記，爸爸會看到。`}else w.hidden=true}
+  };
+  setTimeout(()=>amtEl.focus(),60);
+  $('#f-save').onclick=async()=>{
+    if(amtEl.value===''||(!isCount&&+amtEl.value===0)){toast('先填金額');amtEl.focus();return}
+    const a=parseInt(amtEl.value,10);
+    if(isCount){const exp=compute().bal;await addEntry({type,amount:a,cat:'盤點',expected:exp});showCountResult(a,exp);return}
+    if(!cat){toast('選一個分類');return}
+    const note=$('#f-note').value.trim();
+    const flags=[];if(type==='out'&&a>compute().bal)flags.push('over');
+    const save=async()=>{await addEntry({type,amount:a,cat,note,flags:flags.join(',')});closeSheet();toast('記下來了')};
+    if(type==='out'&&cfg.bigLimit&&a>=cfg.bigLimit){
+      $('#f-btns').innerHTML=`<p class="ask">${money(a)} 比較多。買之前有先跟爸爸商量過嗎？</p><button class="ghost" id="f-no">還沒</button><button class="primary" id="f-yes">有商量過</button>`;
+      $('#f-yes').onclick=()=>{flags.push('big:asked');save()};
+      $('#f-no').onclick=()=>{flags.push('big:notasked');save()};
+    } else save();
+  };
+}
+
+function showCountResult(a,exp){
+  const diff=a-exp;
+  const msg=diff===0?'跟帳上一模一樣，帳很清楚。':
+    `手上${diff>0?'比帳上多':'比帳上少'} ${money(Math.abs(diff))}。爸爸會看到這個差額，可以一起想想差在哪一筆沒記。`;
+  showSheet(`<h2>對完了</h2><p class="hint">帳上 ${money(exp)}，手上 ${money(a)}</p><p class="result">${diff===0?'$0':(diff>0?"+":"-")+money(Math.abs(diff))}</p><p>${msg}</p><div class="btns"><button class="primary" data-close>好</button></div>`);
+}
+
+function openDetail(id){
+  const r=compute().rows.find(x=>x.e.id===id);if(!r)return;
+  const e=r.e,d=new Date(e.ts);
+  const typeZh={out:'支出',in:'收入',adj:'爸爸調整',count:'盤點'}[e.type]||e.type;
+  const status=e.local?'還沒傳給爸爸':r.state==='pending'?'已傳給爸爸，等確認':r.state==='rejected'?'爸爸說這筆不算':r.state==='voided'?'已撤銷（紀錄還在）':'已傳給爸爸';
+  let h=`<h2>${typeZh} ${e.type==='count'?'':money(Math.abs(e.amount))}</h2><dl class="detail">
+    <dt>時間</dt><dd>${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}</dd>
+    <dt>分類</dt><dd>${esc(e.source==='parent'?'爸爸給：'+e.cat:e.cat)}</dd>
+    ${e.note?`<dt>說明</dt><dd>${esc(e.note)}</dd>`:''}
+    <dt>狀態</dt><dd>${status}</dd></dl>`;
+  const canVoid=e.source==='kid'&&(e.type==='out'||e.type==='in')&&r.state!=='voided'&&r.state!=='rejected';
+  h+=`<div class="btns">${canVoid?'<button class="ghost danger" id="d-void">撤銷這筆</button>':''}<button class="primary" data-close>關閉</button></div>`;
+  if(canVoid)h+='<p class="hint">記錯了就撤銷，再重新記一筆。撤銷不會刪掉，爸爸看得到。</p>';
+  showSheet(h);
+  if(canVoid){const b=$('#d-void');b.onclick=async()=>{
+    if(!b.dataset.sure){b.dataset.sure=1;b.textContent='再按一次確認撤銷';return}
+    await addEntry({type:'void',amount:0,cat:'撤銷',ref:e.id,note:'撤銷 '+e.cat+' '+money(e.amount)});closeSheet();toast('撤銷了');
+  }}
+}
+
+/* ---------- 家長：密碼、設定 ---------- */
+function askPin(then){
+  showSheet(`<h2>家長設定</h2><p class="hint">輸入家長密碼</p><input id="p-pin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="家長密碼"><p id="p-err" class="warn" hidden></p><div class="btns"><button class="ghost" data-close>取消</button><button class="primary" id="p-ok">確定</button></div>`);
+  const pin=$('#p-pin');setTimeout(()=>pin.focus(),60);
+  const go=async()=>{if(await sha('pin:'+pin.value)===cfg.pinHash)then();else{const er=$('#p-err');er.hidden=false;er.textContent='密碼不對';pin.value=''}};
+  $('#p-ok').onclick=go;pin.onkeydown=e=>{if(e.key==='Enter')go()};
+}
+function openSettings(){
+  showSheet(`<h2>家長設定</h2><p class="hint">這支手機是 ${cfg.child}（${KIDS[cfg.child]}）的帳本。</p>
+    <label class="field">傳給爸爸的網址（Apps Script）<input id="s-url" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="field">多少錢以上要先商量<input id="s-big" inputmode="numeric" value="${cfg.bigLimit||''}"></label>
+    <label class="field">新的家長密碼（不改就留空白）<input id="s-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <p id="s-msg" class="hint">${lastErr?'上次同步失敗：'+esc(lastErr):''}</p>
+    <div class="btns"><button class="ghost" id="s-sync">現在同步</button><button class="primary" id="s-save">儲存</button></div>
+    <div class="btns"><button class="ghost danger" id="s-reset">重設這支手機</button><button class="ghost" data-close>關閉</button></div>`);
+  $('#s-save').onclick=async()=>{
+    cfg.url=$('#s-url').value.trim();cfg.bigLimit=parseInt($('#s-big').value,10)||0;
+    const np=$('#s-pin').value;
+    if(np){if(!/^\d{4,8}$/.test(np)){$('#s-msg').textContent='密碼要 4 到 8 位數字';return}cfg.pinHash=await sha('pin:'+np)}
+    st('cfg',cfg);closeSheet();toast('設定存好了');render();sync();
+  };
+  $('#s-sync').onclick=async()=>{$('#s-msg').textContent='同步中…';await sync();$('#s-msg').textContent=lastErr?'同步失敗：'+lastErr:'同步完成'};
+  const rb=$('#s-reset');rb.onclick=()=>{
+    if(!rb.dataset.sure){rb.dataset.sure=1;rb.textContent=pending.length?`還有 ${pending.length} 筆沒傳出去，仍要重設？`:'再按一次確認重設';return}
+    ['cfg','chain','pending','server'].forEach(k=>{try{localStorage.removeItem(P+k)}catch(e){}});location.reload();
+  };
+}
+function openSetup(){
+  let kid='';
+  showSheet(`<h2>第一次設定</h2><p class="hint">由爸爸設定。之後要改設定都要輸入密碼。</p>
+    <div class="chips" role="group" aria-label="誰的帳本">${Object.keys(KIDS).map(k=>`<button class="chip" aria-pressed="false" data-kid="${k}">${k} ${KIDS[k]}</button>`).join('')}</div>
+    <label class="field">家長密碼（4 到 8 位數字）<input id="u-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label class="field">再輸入一次<input id="u-pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label class="field">傳給爸爸的網址（可以之後再填）<input id="u-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="field">多少錢以上要先商量<input id="u-big" inputmode="numeric" value="500"></label>
+    <p id="u-err" class="warn" hidden></p>
+    <div class="btns"><button class="primary" id="u-ok">開始使用</button></div>`,true);
+  sheetIn.querySelectorAll('[data-kid]').forEach(b=>b.onclick=()=>{kid=b.dataset.kid;document.documentElement.dataset.child=kid;sheetIn.querySelectorAll('[data-kid]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  $('#u-ok').onclick=async()=>{
+    const err=m=>{const e=$('#u-err');e.hidden=false;e.textContent=m};
+    const p=$('#u-pin').value;
+    if(!kid)return err('先選這支手機是誰的');
+    if(!/^\d{4,8}$/.test(p))return err('密碼要 4 到 8 位數字');
+    if(p!==$('#u-pin2').value)return err('兩次密碼不一樣');
+    cfg={child:kid,device:uid(),url:$('#u-url').value.trim(),bigLimit:parseInt($('#u-big').value,10)||0,pinHash:await sha('pin:'+p)};
+    chain={seq:0,lastHash:'GENESIS'};pending=[];server={entries:[],at:0};
+    st('cfg',cfg);st('chain',chain);st('pending',pending);st('server',server);
+    closeSheet();render();sync();
+  };
+}
+
+/* ---------- 同步：試算表是正本 ---------- */
+async function sync(){
+  if(!cfg||!cfg.url||syncing)return;
+  syncing=true;render();
+  try{
+    const body=JSON.stringify(pending.length?{action:'push',child:cfg.child,device:cfg.device,entries:pending}:{action:'pull',child:cfg.child,device:cfg.device});
+    const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error||'回應錯誤');
+    server={entries:data.entries||[],at:Date.now()};
+    const ids=new Set(server.entries.map(e=>e.id));
+    pending=pending.filter(p=>!ids.has(p.id));
+    st('server',server);st('pending',pending);lastErr='';
+  }catch(e){lastErr=e.message||String(e)}
+  finally{syncing=false;render()}
+}
+
+/* ---------- 啟動 ---------- */
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(a&&cfg){openEntry(a.dataset.act);return}
+  const row=e.target.closest('.row');if(row)openDetail(row.dataset.id);
+});
+$('#gear').onclick=()=>askPin(openSettings);
+window.addEventListener('online',sync);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
+setInterval(()=>{if(document.visibilityState==='visible')sync()},60000);
+
+if(!window.crypto||!crypto.subtle){
+  document.body.innerHTML='<p style="padding:24px">這個網址要用 https 開啟才能使用。</p>';
+} else if(!cfg){openSetup()} else {render();sync()}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script>
+</body>
+</html>
