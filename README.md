@@ -5,6 +5,7 @@
 - 純前端 PWA：一個 `index.html`，沒有框架、沒有建置步驟
 - 後端：Google Apps Script + Google 試算表
 - 一個 App 給多個孩子用，第一次設定時選是誰的帳本
+- 介面支援繁體中文、English、Español、日本語，孩子可自己切換（不需要密碼）
 
 ## 功能
 
@@ -57,7 +58,7 @@
 
 ### 2. GitHub Pages
 
-1. 把這個 repo 的檔案放在根目錄：`index.html`、`sw.js`、`manifest.json`、`icon-192.png`、`icon-512.png`。
+1. 把這個 repo 的檔案放在根目錄：`index.html`、`sw.js`、`manifest.json`、`icon-192.png`、`icon-512.png`、`apple-touch-icon.png`。
 2. Settings → Pages → 從 `main` branch 根目錄部署。
 3. 網址會是 `https://<帳號>.github.io/<repo>/`。
 
@@ -78,7 +79,7 @@
 
 ## 更新 App
 
-改了 `index.html` 之後，把 `sw.js` 第一行的版本號加一（例如 `pocket-money-v1` → `pocket-money-v2`）再推上去。孩子手機下次開啟會在背景更新，再開一次就是新版。
+改了 `index.html` 之後，把 `sw.js` 第一行的版本號加一（例如 `pocket-money-v3` → `pocket-money-v4`）再推上去。孩子手機下次開啟會在背景更新，再開一次就是新版。
 
 ## 檔案
 
@@ -88,6 +89,7 @@ sw.js           Service Worker，離線快取
 manifest.json   PWA 設定
 icon-192.png    圖示
 icon-512.png    圖示
+apple-touch-icon.png  iPhone 主畫面圖示
 Code.gs         Apps Script 後端（貼到試算表用，不需要放在 Pages 上）
 ```
 
@@ -135,3 +137,7 @@ App 一律用 `POST`（`Content-Type: text/plain`，避免 CORS preflight）：
 - 需要 HTTPS（`crypto.subtle`），GitHub Pages 沒問題。
 - Apps Script 網址等於寫入權限。外流的話別人可以新增假紀錄，但改不了、刪不掉舊的，而且會被標記裝置。需要時可以重新部署換網址。
 - 孩子如果清除 App 資料，還沒同步的紀錄會遺失，試算表會標「帳本重新開始」。
+
+## 多語言
+
+字串集中在 `index.html` 的 `S` 物件（`zh-Hant`、`en`、`es`、`ja`）。分類在紀錄裡一律存中文，畫面上才透過 `CAT_T` 翻譯，所以試算表永遠是中文，切換語言不影響舊資料或雜湊。新增分類時，要同時加進 `CATS` 和 `CAT_T`。

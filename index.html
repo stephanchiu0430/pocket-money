@@ -6,7 +6,7 @@
 <title>我的零用錢</title>
 <meta name="theme-color" content="#1F6FB2">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,24 +116,30 @@ dialog#sheet[open]{animation:up .22s ease-out}
 
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
+.hbtn{background:rgba(255,255,255,.16);border:0;color:inherit;border-radius:999px;min-height:36px;min-width:44px;padding:0 12px;font-size:.85rem;font-weight:700;margin-left:auto}
+.hbtn + .gear{margin-left:4px}
+:root[lang="ja"]{--body:"LXGW WenKai TC","Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}
+.langs{display:grid;gap:10px;margin-top:12px}
+.langs button{min-height:52px;border-radius:14px;border:1.5px solid var(--rule);background:var(--paper);font-size:1.1rem;text-align:left;padding:0 16px}
+.langs button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
 </style>
 </head>
 <body>
 <main class="app">
   <header class="cover">
-    <div class="who"><b id="kid">　</b><span>的零用錢</span><button class="gear" id="gear" aria-label="家長設定">⚙︎</button></div>
-    <div class="bal-label">現在可以用</div>
+    <div class="who"><b id="who">　</b><button class="hbtn" id="langBtn"></button><button class="gear" id="gear">⚙︎</button></div>
+    <div class="bal-label" data-i="canUse"></div>
     <div class="bal" id="bal">$0</div>
     <div class="pend" id="pend"></div>
     <div class="sync" id="sync"></div>
   </header>
   <section class="actions">
-    <button class="act out" data-act="out">花錢</button>
-    <button class="act in" data-act="in">收到錢</button>
+    <button class="act out" data-act="out" data-i="spend"></button>
+    <button class="act in" data-act="in" data-i="receive"></button>
   </section>
-  <button class="count-link" data-act="count">對一對：手上的錢跟帳上一樣嗎？</button>
-  <section class="book" aria-label="存摺">
-    <div class="book-head grid"><span>日期</span><span>摘要</span><span>支出</span><span>存入</span><span>餘額</span></div>
+  <button class="count-link" data-act="count" data-i="countLink"></button>
+  <section class="book" id="book">
+    <div class="book-head grid"><span data-i="cDate"></span><span data-i="cItem"></span><span data-i="cOut"></span><span data-i="cIn"></span><span data-i="cBal"></span></div>
     <div id="rows"></div>
   </section>
 </main>
@@ -141,12 +147,100 @@ dialog#sheet[open]{animation:up .22s ease-out}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
+/* ---------- 語言 ---------- */
+const LANGS={'zh-Hant':{label:'中文',short:'中',loc:'zh-Hant-TW'},en:{label:'English',short:'EN',loc:'en-US'},es:{label:'Español',short:'ES',loc:'es'},ja:{label:'日本語',short:'日',loc:'ja-JP'}};
+const S={
+'zh-Hant':{title:'我的零用錢',whose:'{n} 的零用錢',canUse:'現在可以用',pendNote:'另外 {m} 等爸爸確認',spend:'花錢',receive:'收到錢',countLink:'對一對：手上的錢跟帳上一樣嗎？',
+ cDate:'日期',cItem:'摘要',cOut:'支出',cIn:'存入',cBal:'餘額',book:'存摺',empty:'還沒有紀錄。花了錢或收到錢，按上面的按鈕記一筆。',
+ sNotSet:'還沒設定：紀錄只存在這支手機',sSyncing:'傳給爸爸中…',sWaiting:'{n} 筆還沒傳給爸爸',sOffline:'（離線中，有網路會自動傳）',sDone:'都傳給爸爸了（{t}）',sNoConn:'還沒連上爸爸的帳本',
+ tPending:'待確認',tRejected:'爸爸說不算',tVoided:'已撤銷',tUnsynced:'還沒傳給爸爸',fromDad:'爸爸給：{c}',dadTook:'爸爸扣：{c}',
+ countRow:'盤點：手上 {m}',same:'跟帳上一樣',more:'比帳上多 {m}',less:'比帳上少 {m}',
+ qOut:'花了多少錢？',qIn:'收到多少錢？',qCount:'手上現在有多少錢？',countHint:'錢包、存錢筒、口袋裡的都算。',amount:'金額',category:'分類',note:'說明',
+ phOut:'買了什麼？例：珍奶',phIn:'誰給的？為什麼？',inHint:'爸爸確認後，才會算進可以用的錢。',overWarn:'比你現在可以用的錢多 {m}。還是可以記，爸爸會看到。',
+ cancel:'取消',save:'記下來',needAmt:'先填金額',needCat:'選一個分類',saved:'記下來了',bigAsk:'{m} 比較多。買之前有先跟爸爸商量過嗎？',notYet:'還沒',yesAsked:'有商量過',
+ countDone:'對完了',countSum:'帳上 {a}，手上 {b}',countSame:'跟帳上一模一樣，帳很清楚。',countMore:'手上比帳上多 {m}。',countLess:'手上比帳上少 {m}。',countTail:'爸爸會看到這個差額，可以一起想想差在哪一筆沒記。',ok:'好',
+ tyout:'支出',tyin:'收入',tyadj:'爸爸調整',tycount:'盤點',time:'時間',status:'狀態',
+ stLocal:'還沒傳給爸爸',stPending:'已傳給爸爸，等確認',stRejected:'爸爸說這筆不算',stVoided:'已撤銷（紀錄還在）',stOk:'已傳給爸爸',
+ void:'撤銷這筆',voidSure:'再按一次確認撤銷',voidHint:'記錯了就撤銷，再重新記一筆。撤銷不會刪掉，爸爸看得到。',voidDone:'撤銷了',close:'關閉',
+ parentT:'家長設定',enterPin:'輸入家長密碼',pin:'家長密碼',wrongPin:'密碼不對',confirm:'確定',thisPhone:'這支手機是 {n} 的帳本。',
+ url:'傳給爸爸的網址（Apps Script）',big:'多少錢以上要先商量',newPin:'新的家長密碼（不改就留空白）',lastFail:'上次同步失敗：',syncNow:'現在同步',saveSet:'儲存',
+ pinRule:'密碼要 4 到 8 位數字',setSaved:'設定存好了',syncingNow:'同步中…',syncFail:'同步失敗：',syncOk:'同步完成',reset:'重設這支手機',resetPend:'還有 {n} 筆沒傳出去，仍要重設？',resetSure:'再按一次確認重設',
+ setupT:'第一次設定',setupHint:'由爸爸設定。之後要改設定都要輸入密碼。',whoseBook:'誰的帳本',pinNew:'家長密碼（4 到 8 位數字）',pinAgain:'再輸入一次',urlLater:'傳給爸爸的網址（可以之後再填）',start:'開始使用',
+ pickKid:'先選這支手機是誰的',pinMismatch:'兩次密碼不一樣',https:'這個網址要用 https 開啟才能使用。',lang:'語言'},
+en:{title:'My Pocket Money',whose:'{n}’s Pocket Money',canUse:'Available now',pendNote:'{m} more waiting for Dad to confirm',spend:'Spent',receive:'Got money',countLink:'Check: does your cash match the book?',
+ cDate:'Date',cItem:'Item',cOut:'Out',cIn:'In',cBal:'Balance',book:'Passbook',empty:'No entries yet. When you spend or get money, tap a button above.',
+ sNotSet:'Not set up: entries stay on this phone only',sSyncing:'Sending to Dad…',sWaiting:'{n} not sent to Dad yet',sOffline:' (offline, will send when connected)',sDone:'All sent to Dad ({t})',sNoConn:'Not connected to Dad’s book yet',
+ tPending:'Pending',tRejected:'Not counted',tVoided:'Voided',tUnsynced:'Not sent to Dad yet',fromDad:'From Dad: {c}',dadTook:'Dad deducted: {c}',
+ countRow:'Count: cash {m}',same:'Matches the book',more:'{m} more than the book',less:'{m} less than the book',
+ qOut:'How much did you spend?',qIn:'How much did you get?',qCount:'How much cash do you have right now?',countHint:'Include your wallet, piggy bank and pockets.',amount:'Amount',category:'Category',note:'Note',
+ phOut:'What did you buy? e.g. bubble tea',phIn:'Who gave it, and why?',inHint:'It counts as available after Dad confirms it.',overWarn:'That’s {m} more than you have available. You can still record it; Dad will see it.',
+ cancel:'Cancel',save:'Save',needAmt:'Enter an amount first',needCat:'Pick a category',saved:'Saved',bigAsk:'{m} is a lot. Did you talk with Dad before buying?',notYet:'Not yet',yesAsked:'Yes, I did',
+ countDone:'All checked',countSum:'Book {a}, cash {b}',countSame:'Exactly the same. Your book is spot on.',countMore:'You have {m} more than the book.',countLess:'You have {m} less than the book.',countTail:'Dad will see the difference. You can work out together which entry is missing.',ok:'OK',
+ tyout:'Spending',tyin:'Income',tyadj:'Adjustment by Dad',tycount:'Cash count',time:'Time',status:'Status',
+ stLocal:'Not sent to Dad yet',stPending:'Sent to Dad, waiting for confirmation',stRejected:'Dad said this doesn’t count',stVoided:'Voided (still on record)',stOk:'Sent to Dad',
+ void:'Void this entry',voidSure:'Tap again to confirm',voidHint:'Made a mistake? Void it and record it again. Voiding doesn’t delete anything, and Dad can see it.',voidDone:'Voided',close:'Close',
+ parentT:'Parent settings',enterPin:'Enter the parent PIN',pin:'Parent PIN',wrongPin:'Wrong PIN',confirm:'OK',thisPhone:'This phone is {n}’s book.',
+ url:'Sync URL (Apps Script)',big:'Ask Dad first for spending of at least',newPin:'New parent PIN (leave blank to keep it)',lastFail:'Last sync failed: ',syncNow:'Sync now',saveSet:'Save',
+ pinRule:'The PIN must be 4 to 8 digits',setSaved:'Settings saved',syncingNow:'Syncing…',syncFail:'Sync failed: ',syncOk:'Synced',reset:'Reset this phone',resetPend:'{n} entries not sent yet. Reset anyway?',resetSure:'Tap again to confirm reset',
+ setupT:'First-time setup',setupHint:'Dad sets this up. Changing settings later needs the PIN.',whoseBook:'Whose book',pinNew:'Parent PIN (4 to 8 digits)',pinAgain:'Enter it again',urlLater:'Sync URL (you can add it later)',start:'Get started',
+ pickKid:'First choose whose phone this is',pinMismatch:'The PINs don’t match',https:'Please open this page over https.',lang:'Language'},
+es:{title:'Mi dinero',whose:'Dinero de {n}',canUse:'Disponible ahora',pendNote:'{m} más esperando que papá confirme',spend:'Gasté',receive:'Recibí',countLink:'Revisa: ¿tu dinero coincide con la cuenta?',
+ cDate:'Fecha',cItem:'Concepto',cOut:'Salida',cIn:'Entrada',cBal:'Saldo',book:'Libreta',empty:'Todavía no hay registros. Cuando gastes o recibas dinero, toca un botón de arriba.',
+ sNotSet:'Sin configurar: los registros solo están en este teléfono',sSyncing:'Enviando a papá…',sWaiting:'{n} sin enviar a papá',sOffline:' (sin conexión, se enviará al conectarse)',sDone:'Todo enviado a papá ({t})',sNoConn:'Aún no conectado con la cuenta de papá',
+ tPending:'Pendiente',tRejected:'No cuenta',tVoided:'Anulado',tUnsynced:'Aún no enviado a papá',fromDad:'De papá: {c}',dadTook:'Descuento de papá: {c}',
+ countRow:'Conteo: efectivo {m}',same:'Coincide con la cuenta',more:'{m} más que la cuenta',less:'{m} menos que la cuenta',
+ qOut:'¿Cuánto gastaste?',qIn:'¿Cuánto recibiste?',qCount:'¿Cuánto dinero tienes ahora?',countHint:'Cuenta tu cartera, tu alcancía y tus bolsillos.',amount:'Monto',category:'Categoría',note:'Nota',
+ phOut:'¿Qué compraste? Ej.: té con perlas',phIn:'¿Quién te lo dio y por qué?',inHint:'Se suma a lo disponible cuando papá lo confirme.',overWarn:'Son {m} más de lo que tienes disponible. Puedes anotarlo igual; papá lo verá.',
+ cancel:'Cancelar',save:'Guardar',needAmt:'Primero escribe el monto',needCat:'Elige una categoría',saved:'Guardado',bigAsk:'{m} es bastante. ¿Lo hablaste con papá antes de comprar?',notYet:'Todavía no',yesAsked:'Sí, lo hablé',
+ countDone:'Listo',countSum:'Cuenta {a}, efectivo {b}',countSame:'Exactamente igual. Tu cuenta está perfecta.',countMore:'Tienes {m} más que la cuenta.',countLess:'Tienes {m} menos que la cuenta.',countTail:'Papá verá la diferencia. Pueden pensar juntos qué faltó anotar.',ok:'Vale',
+ tyout:'Gasto',tyin:'Ingreso',tyadj:'Ajuste de papá',tycount:'Conteo',time:'Hora',status:'Estado',
+ stLocal:'Aún no enviado a papá',stPending:'Enviado a papá, pendiente de confirmar',stRejected:'Papá dijo que esto no cuenta',stVoided:'Anulado (sigue registrado)',stOk:'Enviado a papá',
+ void:'Anular este registro',voidSure:'Toca otra vez para confirmar',voidHint:'¿Te equivocaste? Anúlalo y vuelve a anotarlo. Anular no borra nada y papá lo ve.',voidDone:'Anulado',close:'Cerrar',
+ parentT:'Ajustes de padres',enterPin:'Introduce el PIN de padres',pin:'PIN de padres',wrongPin:'PIN incorrecto',confirm:'Aceptar',thisPhone:'Este teléfono es la cuenta de {n}.',
+ url:'URL de sincronización (Apps Script)',big:'Consultar con papá antes de gastar desde',newPin:'Nuevo PIN (déjalo vacío para mantenerlo)',lastFail:'Falló la última sincronización: ',syncNow:'Sincronizar',saveSet:'Guardar',
+ pinRule:'El PIN debe tener de 4 a 8 dígitos',setSaved:'Ajustes guardados',syncingNow:'Sincronizando…',syncFail:'Falló la sincronización: ',syncOk:'Sincronizado',reset:'Restablecer este teléfono',resetPend:'Hay {n} registros sin enviar. ¿Restablecer igual?',resetSure:'Toca otra vez para restablecer',
+ setupT:'Configuración inicial',setupHint:'Lo configura papá. Para cambiar los ajustes después se necesita el PIN.',whoseBook:'De quién es la cuenta',pinNew:'PIN de padres (4 a 8 dígitos)',pinAgain:'Repítelo',urlLater:'URL de sincronización (puedes agregarla después)',start:'Empezar',
+ pickKid:'Primero elige de quién es este teléfono',pinMismatch:'Los PIN no coinciden',https:'Abre esta página con https.',lang:'Idioma'},
+ja:{title:'おこづかい帳',whose:'{n}のおこづかい',canUse:'いま使えるお金',pendNote:'ほかに {m} がパパの確認待ち',spend:'使った',receive:'もらった',countLink:'たしかめよう：手もとのお金と帳簿は同じ？',
+ cDate:'日付',cItem:'内容',cOut:'出金',cIn:'入金',cBal:'残高',book:'通帳',empty:'まだ記録がありません。お金を使ったり、もらったりしたら、上のボタンで記録しよう。',
+ sNotSet:'未設定：記録はこのスマホだけに保存されます',sSyncing:'パパに送信中…',sWaiting:'{n} 件がまだパパに届いていません',sOffline:'（オフライン。つながったら自動で送ります）',sDone:'すべてパパに送信済み（{t}）',sNoConn:'まだパパの帳簿につながっていません',
+ tPending:'確認待ち',tRejected:'対象外',tVoided:'取り消し済み',tUnsynced:'まだパパに送っていない',fromDad:'パパから：{c}',dadTook:'パパが差し引き：{c}',
+ countRow:'確認：手もと {m}',same:'帳簿と同じ',more:'帳簿より {m} 多い',less:'帳簿より {m} 少ない',
+ qOut:'いくら使った？',qIn:'いくらもらった？',qCount:'いま手もとにいくらある？',countHint:'さいふ、貯金箱、ポケットの中も全部数えてね。',amount:'金額',category:'分類',note:'メモ',
+ phOut:'何を買った？例：タピオカ',phIn:'だれから？なんで？',inHint:'パパが確認したら、使えるお金に入るよ。',overWarn:'使えるお金より {m} 多いよ。記録はできるけど、パパにも見えるよ。',
+ cancel:'キャンセル',save:'記録する',needAmt:'先に金額を入れてね',needCat:'分類を選んでね',saved:'記録したよ',bigAsk:'{m} は大きい金額だね。買う前にパパと相談した？',notYet:'まだ',yesAsked:'相談した',
+ countDone:'確認できた',countSum:'帳簿 {a}、手もと {b}',countSame:'帳簿とぴったり同じ。ばっちり！',countMore:'手もとが帳簿より {m} 多いよ。',countLess:'手もとが帳簿より {m} 少ないよ。',countTail:'パパにもこの差が見えるよ。どれを書き忘れたか一緒に考えよう。',ok:'OK',
+ tyout:'支出',tyin:'収入',tyadj:'パパの調整',tycount:'お金の確認',time:'日時',status:'状態',
+ stLocal:'まだパパに送っていない',stPending:'パパに送信済み、確認待ち',stRejected:'パパが対象外にしました',stVoided:'取り消し済み（記録は残る）',stOk:'パパに送信済み',
+ void:'これを取り消す',voidSure:'もう一度押して取り消し',voidHint:'まちがえたら取り消して、もう一度記録しよう。取り消しても消えないし、パパにも見えるよ。',voidDone:'取り消したよ',close:'閉じる',
+ parentT:'保護者の設定',enterPin:'保護者のパスワードを入力',pin:'保護者のパスワード',wrongPin:'パスワードがちがいます',confirm:'OK',thisPhone:'このスマホは{n}の帳簿です。',
+ url:'同期URL（Apps Script）',big:'この金額以上は先にパパと相談',newPin:'新しいパスワード（変えないなら空欄）',lastFail:'前回の同期に失敗：',syncNow:'今すぐ同期',saveSet:'保存',
+ pinRule:'パスワードは4〜8桁の数字です',setSaved:'設定を保存しました',syncingNow:'同期中…',syncFail:'同期に失敗：',syncOk:'同期しました',reset:'このスマホをリセット',resetPend:'まだ送っていない記録が {n} 件あります。それでもリセット？',resetSure:'もう一度押してリセット',
+ setupT:'はじめての設定',setupHint:'パパが設定します。あとで設定を変えるにはパスワードが必要です。',whoseBook:'だれの帳簿',pinNew:'保護者のパスワード（4〜8桁の数字）',pinAgain:'もう一度入力',urlLater:'同期URL（あとで入力してもOK）',start:'はじめる',
+ pickKid:'まず、だれのスマホか選んでね',pinMismatch:'パスワードが一致しません',https:'このページは https で開いてください。',lang:'言語'}
+};
+// 分類在紀錄裡一律存中文（試算表看得懂、舊資料相容），畫面顯示時才翻譯
+const CAT_T={
+ '吃喝':['Food & drinks','Comida y bebida','飲食'],'遊戲娛樂':['Games & fun','Juegos y diversión','ゲーム・遊び'],'文具書籍':['Stationery & books','Útiles y libros','文房具・本'],
+ '交通':['Transport','Transporte','交通'],'送禮':['Gifts','Regalos','プレゼント'],'存起來':['Savings','Ahorro','貯金'],'其他':['Other','Otros','その他'],
+ '紅包':['Red envelope','Sobre rojo','お年玉'],'獎勵':['Reward','Premio','ごほうび'],'打工、賣東西':['Work or selling','Trabajo o ventas','バイト・売ったもの'],
+ '零用錢':['Allowance','Mesada','おこづかい'],'扣款':['Deduction','Descuento','差し引き'],'盤點':['Cash count','Conteo','お金の確認'],'撤銷':['Void','Anulación','取り消し']};
+const LI={en:0,es:1,ja:2};
+
 const KIDS={Chantel:'喬琳',Luke:'顯喻',Ian:'顯英'};
 const COLORS={Chantel:'#6A4C9C',Luke:'#1F6FB2',Ian:'#2D7D4F'};
 const CATS={out:['吃喝','遊戲娛樂','文具書籍','交通','送禮','存起來','其他'],in:['紅包','獎勵','打工、賣東西','其他']};
 const P='pm1:';
 const ld=(k,d)=>{try{const v=localStorage.getItem(P+k);return v?JSON.parse(v):d}catch(e){return d}};
 const st=(k,v)=>{try{localStorage.setItem(P+k,JSON.stringify(v))}catch(e){}};
+
+function detectLang(){const n=(navigator.language||'').toLowerCase();return n.startsWith('ja')?'ja':n.startsWith('es')?'es':n.startsWith('en')?'en':'zh-Hant'}
+let lang=ld('lang',null);if(!LANGS[lang])lang=detectLang();
+const t=(k,v={})=>(S[lang][k]??S['zh-Hant'][k]??k).replace(/\{(\w+)\}/g,(_,x)=>v[x]??'');
+const catT=c=>lang==='zh-Hant'||!CAT_T[c]?c:CAT_T[c][LI[lang]];
+const loc=()=>LANGS[lang].loc;
+const kidName=k=>lang==='zh-Hant'?`${k}（${KIDS[k]}）`:k;
+
 let cfg=ld('cfg',null);
 let chain=ld('chain',{seq:0,lastHash:'GENESIS'});
 let pending=ld('pending',[]);
@@ -155,19 +249,19 @@ let syncing=false, lastErr='';
 const $=s=>document.querySelector(s);
 const sheet=$('#sheet'), sheetIn=$('#sheetIn');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=n=>(n<0?'-':'')+'$'+Math.abs(Number(n)||0).toLocaleString('zh-TW');
-const two=n=>String(n).padStart(2,'0');
+const money=n=>(n<0?'-':'')+'$'+Math.abs(Number(n)||0).toLocaleString(loc());
+const fmt=(d,o)=>new Intl.DateTimeFormat(loc(),o).format(d);
 
 async function sha(s){
   const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
-// 必須跟 Apps Script 的 hashOf() 完全一樣
+// 必須跟 Apps Script 的 hashOf_() 完全一樣
 const canon=e=>[e.id,e.seq,e.ts,e.child,e.device,e.type,e.amount,e.cat,e.note,e.ref,e.expected,e.flags,e.prev].map(v=>v==null?'':String(v)).join('|');
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
 
 let toastT;
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
+function toast(msg){const x=$('#toast');x.textContent=msg;x.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>x.classList.remove('show'),1800)}
 
 /* ---------- 帳本計算 ---------- */
 function allEntries(){
@@ -197,47 +291,56 @@ function compute(){
 }
 
 /* ---------- 畫面 ---------- */
+function applyStatic(){
+  document.documentElement.lang=lang;
+  document.title=t('title');
+  document.querySelectorAll('[data-i]').forEach(el=>el.textContent=t(el.dataset.i));
+  $('#book').setAttribute('aria-label',t('book'));
+  const lb=$('#langBtn');lb.textContent=LANGS[lang].short;lb.setAttribute('aria-label',t('lang'));
+  $('#gear').setAttribute('aria-label',t('parentT'));
+}
 function syncText(){
-  if(!cfg.url)return['還沒設定：紀錄只存在這支手機',true];
-  if(syncing)return['傳給爸爸中…',true];
+  if(!cfg.url)return[t('sNotSet'),true];
+  if(syncing)return[t('sSyncing'),true];
   const n=pending.length;
-  if(n)return[`${n} 筆還沒傳給爸爸${navigator.onLine?'':'（離線中，有網路會自動傳）'}`,true];
-  if(server.at){const d=new Date(server.at);return[`都傳給爸爸了（${d.getMonth()+1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}）`,false]}
-  return['還沒連上爸爸的帳本',true];
+  if(n)return[t('sWaiting',{n})+(navigator.onLine?'':t('sOffline')),true];
+  if(server.at)return[t('sDone',{t:fmt(new Date(server.at),{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}),false];
+  return[t('sNoConn'),true];
 }
 function rowHtml(r){
   const e=r.e,d=new Date(e.ts);
-  let desc=e.source==='parent'?`爸爸給：${esc(e.cat)}`:esc(e.cat);
+  let desc=e.source==='parent'?esc(t('fromDad',{c:catT(e.cat)})):esc(catT(e.cat));
   let outA='',inA='',tags='';
   if(e.type==='out')outA=money(e.amount);
   else if(e.type==='in')inA=money(e.amount);
-  else if(e.type==='adj'){if(e.amount<0){outA=money(-e.amount);desc=`爸爸扣：${esc(e.cat)}`}else inA=money(e.amount)}
+  else if(e.type==='adj'){if(e.amount<0){outA=money(-e.amount);desc=esc(t('dadTook',{c:catT(e.cat)}))}else inA=money(e.amount)}
   if(e.type==='count'){
     const diff=e.amount-Number(e.expected);
-    desc=`盤點：手上 ${money(e.amount)}<small>${diff===0?'跟帳上一樣':(diff>0?'比帳上多 ':'比帳上少 ')+money(Math.abs(diff))}</small>`;
+    desc=`${esc(t('countRow',{m:money(e.amount)}))}<small>${esc(diff===0?t('same'):t(diff>0?'more':'less',{m:money(Math.abs(diff))}))}</small>`;
   } else if(e.note)desc+=`<small>${esc(e.note)}</small>`;
-  if(r.state==='pending')tags+='<span class="tag">待確認</span>';
-  if(r.state==='rejected')tags+='<span class="tag">爸爸說不算</span>';
-  if(r.state==='voided')tags+='<span class="tag">已撤銷</span>';
-  if(e.local)tags+='<span class="dot" title="還沒傳給爸爸"></span>';
-  return `<button class="row grid ${r.state}" data-id="${esc(e.id)}"><span class="c-date">${d.getMonth()+1}/${d.getDate()}</span><span class="c-desc">${desc}${tags}</span><span class="c-out">${outA}</span><span class="c-in">${inA}</span><span class="c-bal">${r.eff?money(r.bal):''}</span></button>`;
+  if(r.state==='pending')tags+=`<span class="tag">${t('tPending')}</span>`;
+  if(r.state==='rejected')tags+=`<span class="tag">${t('tRejected')}</span>`;
+  if(r.state==='voided')tags+=`<span class="tag">${t('tVoided')}</span>`;
+  if(e.local)tags+=`<span class="dot" title="${esc(t('tUnsynced'))}"></span>`;
+  return `<button class="row grid ${r.state}" data-id="${esc(e.id)}"><span class="c-date">${fmt(d,{month:'numeric',day:'numeric'})}</span><span class="c-desc">${desc}${tags}</span><span class="c-out">${outA}</span><span class="c-in">${inA}</span><span class="c-bal">${r.eff?money(r.bal):''}</span></button>`;
 }
 function render(){
+  applyStatic();
   if(!cfg)return;
   document.documentElement.dataset.child=cfg.child;
   document.querySelector('meta[name=theme-color]').content=COLORS[cfg.child];
-  $('#kid').textContent=cfg.child;
+  $('#who').textContent=t('whose',{n:cfg.child});
   const {bal,pendIn,rows}=compute();
   $('#bal').textContent=money(bal);
-  $('#pend').textContent=pendIn?`另外 ${money(pendIn)} 等爸爸確認`:'';
-  const [t,w]=syncText();const s=$('#sync');s.textContent=t;s.classList.toggle('waiting',w);
+  $('#pend').textContent=pendIn?t('pendNote',{m:money(pendIn)}):'';
+  const [txt,w]=syncText();const s=$('#sync');s.textContent=txt;s.classList.toggle('waiting',w);
   let html='',cur='';
   for(const r of rows.slice().reverse()){
-    const d=new Date(r.e.ts),m=`${d.getFullYear()} 年 ${d.getMonth()+1} 月`;
-    if(m!==cur){html+=`<div class="month">${m}</div>`;cur=m}
+    const m=fmt(new Date(r.e.ts),{year:'numeric',month:'long'});
+    if(m!==cur){html+=`<div class="month">${esc(m)}</div>`;cur=m}
     html+=rowHtml(r);
   }
-  $('#rows').innerHTML=html||'<p class="empty">還沒有紀錄。花了錢或收到錢，按上面的按鈕記一筆。</p>';
+  $('#rows').innerHTML=html||`<p class="empty">${esc(t('empty'))}</p>`;
 }
 
 /* ---------- 面板 ---------- */
@@ -249,6 +352,16 @@ sheet.addEventListener('click',e=>{
   if(e.target.closest('[data-close]'))closeSheet();
   else if(e.target===sheet&&!sheetLocked)closeSheet();
 });
+
+/* ---------- 語言選擇（不需要密碼） ---------- */
+function openLang(){
+  const wasSetup=sheet.open&&sheetLocked;
+  showSheet(`<h2>${t('lang')}</h2><div class="langs">${Object.keys(LANGS).map(k=>`<button aria-pressed="${k===lang}" data-lang="${k}">${LANGS[k].label}</button>`).join('')}</div>`,wasSetup);
+  sheetIn.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{
+    lang=b.dataset.lang;st('lang',lang);render();
+    if(!cfg)openSetup();else closeSheet();
+  });
+}
 
 /* ---------- 新增紀錄（只能新增，不能改） ---------- */
 async function addEntry(f){
@@ -265,16 +378,16 @@ async function addEntry(f){
 
 function openEntry(type){
   const isCount=type==='count';
-  const title={out:'花了多少錢？',in:'收到多少錢？',count:'手上現在有多少錢？'}[type];
-  let h=`<h2>${title}</h2>`;
-  if(isCount)h+='<p class="hint">錢包、存錢筒、口袋裡的都算。</p>';
-  h+='<label class="amt"><span>$</span><input id="f-amt" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="金額"></label>';
+  const title={out:t('qOut'),in:t('qIn'),count:t('qCount')}[type];
+  let h=`<h2>${esc(title)}</h2>`;
+  if(isCount)h+=`<p class="hint">${esc(t('countHint'))}</p>`;
+  h+=`<label class="amt"><span>$</span><input id="f-amt" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="${esc(t('amount'))}"></label>`;
   if(!isCount){
-    h+=`<div class="chips" role="group" aria-label="分類">${CATS[type].map(c=>`<button type="button" class="chip" aria-pressed="false" data-cat="${c}">${c}</button>`).join('')}</div>`;
-    h+=`<input id="f-note" class="note" maxlength="40" placeholder="${type==='out'?'買了什麼？例：珍奶':'誰給的？為什麼？'}" aria-label="說明">`;
+    h+=`<div class="chips" role="group" aria-label="${esc(t('category'))}">${CATS[type].map(c=>`<button type="button" class="chip" aria-pressed="false" data-cat="${c}">${esc(catT(c))}</button>`).join('')}</div>`;
+    h+=`<input id="f-note" class="note" maxlength="40" placeholder="${esc(t(type==='out'?'phOut':'phIn'))}" aria-label="${esc(t('note'))}">`;
   }
-  if(type==='in')h+='<p class="hint">爸爸確認後，才會算進可以用的錢。</p>';
-  h+='<p id="f-warn" class="warn" hidden></p><div class="btns" id="f-btns"><button class="ghost" data-close>取消</button><button class="primary" id="f-save">記下來</button></div>';
+  if(type==='in')h+=`<p class="hint">${esc(t('inHint'))}</p>`;
+  h+=`<p id="f-warn" class="warn" hidden></p><div class="btns" id="f-btns"><button class="ghost" data-close>${esc(t('cancel'))}</button><button class="primary" id="f-save">${esc(t('save'))}</button></div>`;
   showSheet(h);
   let cat='';
   sheetIn.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;sheetIn.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b))});
@@ -282,19 +395,19 @@ function openEntry(type){
   amtEl.oninput=()=>{
     amtEl.value=amtEl.value.replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,6);
     if(type==='out'){const a=+amtEl.value,b=compute().bal,w=$('#f-warn');
-      if(a>b){w.hidden=false;w.textContent=`比你現在可以用的錢多 ${money(a-b)}。還是可以記，爸爸會看到。`}else w.hidden=true}
+      if(a>b){w.hidden=false;w.textContent=t('overWarn',{m:money(a-b)})}else w.hidden=true}
   };
   setTimeout(()=>amtEl.focus(),60);
   $('#f-save').onclick=async()=>{
-    if(amtEl.value===''||(!isCount&&+amtEl.value===0)){toast('先填金額');amtEl.focus();return}
+    if(amtEl.value===''||(!isCount&&+amtEl.value===0)){toast(t('needAmt'));amtEl.focus();return}
     const a=parseInt(amtEl.value,10);
     if(isCount){const exp=compute().bal;await addEntry({type,amount:a,cat:'盤點',expected:exp});showCountResult(a,exp);return}
-    if(!cat){toast('選一個分類');return}
+    if(!cat){toast(t('needCat'));return}
     const note=$('#f-note').value.trim();
     const flags=[];if(type==='out'&&a>compute().bal)flags.push('over');
-    const save=async()=>{await addEntry({type,amount:a,cat,note,flags:flags.join(',')});closeSheet();toast('記下來了')};
+    const save=async()=>{await addEntry({type,amount:a,cat,note,flags:flags.join(',')});closeSheet();toast(t('saved'))};
     if(type==='out'&&cfg.bigLimit&&a>=cfg.bigLimit){
-      $('#f-btns').innerHTML=`<p class="ask">${money(a)} 比較多。買之前有先跟爸爸商量過嗎？</p><button class="ghost" id="f-no">還沒</button><button class="primary" id="f-yes">有商量過</button>`;
+      $('#f-btns').innerHTML=`<p class="ask">${esc(t('bigAsk',{m:money(a)}))}</p><button class="ghost" id="f-no">${esc(t('notYet'))}</button><button class="primary" id="f-yes">${esc(t('yesAsked'))}</button>`;
       $('#f-yes').onclick=()=>{flags.push('big:asked');save()};
       $('#f-no').onclick=()=>{flags.push('big:notasked');save()};
     } else save();
@@ -303,75 +416,75 @@ function openEntry(type){
 
 function showCountResult(a,exp){
   const diff=a-exp;
-  const msg=diff===0?'跟帳上一模一樣，帳很清楚。':
-    `手上${diff>0?'比帳上多':'比帳上少'} ${money(Math.abs(diff))}。爸爸會看到這個差額，可以一起想想差在哪一筆沒記。`;
-  showSheet(`<h2>對完了</h2><p class="hint">帳上 ${money(exp)}，手上 ${money(a)}</p><p class="result">${diff===0?'$0':(diff>0?"+":"-")+money(Math.abs(diff))}</p><p>${msg}</p><div class="btns"><button class="primary" data-close>好</button></div>`);
+  const msg=diff===0?t('countSame'):t(diff>0?'countMore':'countLess',{m:money(Math.abs(diff))})+' '+t('countTail');
+  showSheet(`<h2>${esc(t('countDone'))}</h2><p class="hint">${esc(t('countSum',{a:money(exp),b:money(a)}))}</p><p class="result">${diff===0?'$0':(diff>0?'+':'-')+money(Math.abs(diff))}</p><p>${esc(msg)}</p><div class="btns"><button class="primary" data-close>${esc(t('ok'))}</button></div>`);
 }
 
 function openDetail(id){
   const r=compute().rows.find(x=>x.e.id===id);if(!r)return;
   const e=r.e,d=new Date(e.ts);
-  const typeZh={out:'支出',in:'收入',adj:'爸爸調整',count:'盤點'}[e.type]||e.type;
-  const status=e.local?'還沒傳給爸爸':r.state==='pending'?'已傳給爸爸，等確認':r.state==='rejected'?'爸爸說這筆不算':r.state==='voided'?'已撤銷（紀錄還在）':'已傳給爸爸';
-  let h=`<h2>${typeZh} ${e.type==='count'?'':money(Math.abs(e.amount))}</h2><dl class="detail">
-    <dt>時間</dt><dd>${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())}</dd>
-    <dt>分類</dt><dd>${esc(e.source==='parent'?'爸爸給：'+e.cat:e.cat)}</dd>
-    ${e.note?`<dt>說明</dt><dd>${esc(e.note)}</dd>`:''}
-    <dt>狀態</dt><dd>${status}</dd></dl>`;
+  const typeZh=t('ty'+e.type);
+  const status=e.local?t('stLocal'):r.state==='pending'?t('stPending'):r.state==='rejected'?t('stRejected'):r.state==='voided'?t('stVoided'):t('stOk');
+  let h=`<h2>${esc(typeZh)} ${e.type==='count'?money(e.amount):money(Math.abs(e.amount))}</h2><dl class="detail">
+    <dt>${esc(t('time'))}</dt><dd>${esc(fmt(d,{dateStyle:'medium',timeStyle:'short'}))}</dd>
+    <dt>${esc(t('category'))}</dt><dd>${esc(e.source==='parent'?t('fromDad',{c:catT(e.cat)}):catT(e.cat))}</dd>
+    ${e.note?`<dt>${esc(t('note'))}</dt><dd>${esc(e.note)}</dd>`:''}
+    <dt>${esc(t('status'))}</dt><dd>${esc(status)}</dd></dl>`;
   const canVoid=e.source==='kid'&&(e.type==='out'||e.type==='in')&&r.state!=='voided'&&r.state!=='rejected';
-  h+=`<div class="btns">${canVoid?'<button class="ghost danger" id="d-void">撤銷這筆</button>':''}<button class="primary" data-close>關閉</button></div>`;
-  if(canVoid)h+='<p class="hint">記錯了就撤銷，再重新記一筆。撤銷不會刪掉，爸爸看得到。</p>';
+  h+=`<div class="btns">${canVoid?`<button class="ghost danger" id="d-void">${esc(t('void'))}</button>`:''}<button class="primary" data-close>${esc(t('close'))}</button></div>`;
+  if(canVoid)h+=`<p class="hint">${esc(t('voidHint'))}</p>`;
   showSheet(h);
   if(canVoid){const b=$('#d-void');b.onclick=async()=>{
-    if(!b.dataset.sure){b.dataset.sure=1;b.textContent='再按一次確認撤銷';return}
-    await addEntry({type:'void',amount:0,cat:'撤銷',ref:e.id,note:'撤銷 '+e.cat+' '+money(e.amount)});closeSheet();toast('撤銷了');
+    if(!b.dataset.sure){b.dataset.sure=1;b.textContent=t('voidSure');return}
+    await addEntry({type:'void',amount:0,cat:'撤銷',ref:e.id,note:'撤銷 '+e.cat+' '+money(e.amount)});closeSheet();toast(t('voidDone'));
   }}
 }
 
 /* ---------- 家長：密碼、設定 ---------- */
 function askPin(then){
-  showSheet(`<h2>家長設定</h2><p class="hint">輸入家長密碼</p><input id="p-pin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="家長密碼"><p id="p-err" class="warn" hidden></p><div class="btns"><button class="ghost" data-close>取消</button><button class="primary" id="p-ok">確定</button></div>`);
+  showSheet(`<h2>${esc(t('parentT'))}</h2><p class="hint">${esc(t('enterPin'))}</p><input id="p-pin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="${esc(t('pin'))}"><p id="p-err" class="warn" hidden></p><div class="btns"><button class="ghost" data-close>${esc(t('cancel'))}</button><button class="primary" id="p-ok">${esc(t('confirm'))}</button></div>`);
   const pin=$('#p-pin');setTimeout(()=>pin.focus(),60);
-  const go=async()=>{if(await sha('pin:'+pin.value)===cfg.pinHash)then();else{const er=$('#p-err');er.hidden=false;er.textContent='密碼不對';pin.value=''}};
+  const go=async()=>{if(await sha('pin:'+pin.value)===cfg.pinHash)then();else{const er=$('#p-err');er.hidden=false;er.textContent=t('wrongPin');pin.value=''}};
   $('#p-ok').onclick=go;pin.onkeydown=e=>{if(e.key==='Enter')go()};
 }
 function openSettings(){
-  showSheet(`<h2>家長設定</h2><p class="hint">這支手機是 ${cfg.child}（${KIDS[cfg.child]}）的帳本。</p>
-    <label class="field">傳給爸爸的網址（Apps Script）<input id="s-url" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-    <label class="field">多少錢以上要先商量<input id="s-big" inputmode="numeric" value="${cfg.bigLimit||''}"></label>
-    <label class="field">新的家長密碼（不改就留空白）<input id="s-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
-    <p id="s-msg" class="hint">${lastErr?'上次同步失敗：'+esc(lastErr):''}</p>
-    <div class="btns"><button class="ghost" id="s-sync">現在同步</button><button class="primary" id="s-save">儲存</button></div>
-    <div class="btns"><button class="ghost danger" id="s-reset">重設這支手機</button><button class="ghost" data-close>關閉</button></div>`);
+  showSheet(`<h2>${esc(t('parentT'))}</h2><p class="hint">${esc(t('thisPhone',{n:kidName(cfg.child)}))}</p>
+    <label class="field">${esc(t('url'))}<input id="s-url" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="field">${esc(t('big'))}<input id="s-big" inputmode="numeric" value="${cfg.bigLimit||''}"></label>
+    <label class="field">${esc(t('newPin'))}<input id="s-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <p id="s-msg" class="hint">${lastErr?esc(t('lastFail')+lastErr):''}</p>
+    <div class="btns"><button class="ghost" id="s-sync">${esc(t('syncNow'))}</button><button class="primary" id="s-save">${esc(t('saveSet'))}</button></div>
+    <div class="btns"><button class="ghost danger" id="s-reset">${esc(t('reset'))}</button><button class="ghost" data-close>${esc(t('close'))}</button></div>`);
   $('#s-save').onclick=async()=>{
     cfg.url=$('#s-url').value.trim();cfg.bigLimit=parseInt($('#s-big').value,10)||0;
     const np=$('#s-pin').value;
-    if(np){if(!/^\d{4,8}$/.test(np)){$('#s-msg').textContent='密碼要 4 到 8 位數字';return}cfg.pinHash=await sha('pin:'+np)}
-    st('cfg',cfg);closeSheet();toast('設定存好了');render();sync();
+    if(np){if(!/^\d{4,8}$/.test(np)){$('#s-msg').textContent=t('pinRule');return}cfg.pinHash=await sha('pin:'+np)}
+    st('cfg',cfg);closeSheet();toast(t('setSaved'));render();sync();
   };
-  $('#s-sync').onclick=async()=>{$('#s-msg').textContent='同步中…';await sync();$('#s-msg').textContent=lastErr?'同步失敗：'+lastErr:'同步完成'};
+  $('#s-sync').onclick=async()=>{$('#s-msg').textContent=t('syncingNow');await sync();$('#s-msg').textContent=lastErr?t('syncFail')+lastErr:t('syncOk')};
   const rb=$('#s-reset');rb.onclick=()=>{
-    if(!rb.dataset.sure){rb.dataset.sure=1;rb.textContent=pending.length?`還有 ${pending.length} 筆沒傳出去，仍要重設？`:'再按一次確認重設';return}
+    if(!rb.dataset.sure){rb.dataset.sure=1;rb.textContent=pending.length?t('resetPend',{n:pending.length}):t('resetSure');return}
     ['cfg','chain','pending','server'].forEach(k=>{try{localStorage.removeItem(P+k)}catch(e){}});location.reload();
   };
 }
 function openSetup(){
   let kid='';
-  showSheet(`<h2>第一次設定</h2><p class="hint">由爸爸設定。之後要改設定都要輸入密碼。</p>
-    <div class="chips" role="group" aria-label="誰的帳本">${Object.keys(KIDS).map(k=>`<button class="chip" aria-pressed="false" data-kid="${k}">${k} ${KIDS[k]}</button>`).join('')}</div>
-    <label class="field">家長密碼（4 到 8 位數字）<input id="u-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
-    <label class="field">再輸入一次<input id="u-pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
-    <label class="field">傳給爸爸的網址（可以之後再填）<input id="u-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-    <label class="field">多少錢以上要先商量<input id="u-big" inputmode="numeric" value="500"></label>
+  showSheet(`<h2>${esc(t('setupT'))}</h2><p class="hint">${esc(t('setupHint'))}</p>
+    <div class="chips" role="group" aria-label="${esc(t('whoseBook'))}">${Object.keys(KIDS).map(k=>`<button class="chip" aria-pressed="false" data-kid="${k}">${esc(kidName(k))}</button>`).join('')}</div>
+    <label class="field">${esc(t('pinNew'))}<input id="u-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label class="field">${esc(t('pinAgain'))}<input id="u-pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label class="field">${esc(t('urlLater'))}<input id="u-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="field">${esc(t('big'))}<input id="u-big" inputmode="numeric" value="500"></label>
     <p id="u-err" class="warn" hidden></p>
-    <div class="btns"><button class="primary" id="u-ok">開始使用</button></div>`,true);
+    <div class="btns"><button class="ghost" id="u-lang">${esc(t('lang'))}：${LANGS[lang].label}</button><button class="primary" id="u-ok">${esc(t('start'))}</button></div>`,true);
   sheetIn.querySelectorAll('[data-kid]').forEach(b=>b.onclick=()=>{kid=b.dataset.kid;document.documentElement.dataset.child=kid;sheetIn.querySelectorAll('[data-kid]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  $('#u-lang').onclick=openLang;
   $('#u-ok').onclick=async()=>{
     const err=m=>{const e=$('#u-err');e.hidden=false;e.textContent=m};
     const p=$('#u-pin').value;
-    if(!kid)return err('先選這支手機是誰的');
-    if(!/^\d{4,8}$/.test(p))return err('密碼要 4 到 8 位數字');
-    if(p!==$('#u-pin2').value)return err('兩次密碼不一樣');
+    if(!kid)return err(t('pickKid'));
+    if(!/^\d{4,8}$/.test(p))return err(t('pinRule'));
+    if(p!==$('#u-pin2').value)return err(t('pinMismatch'));
     cfg={child:kid,device:uid(),url:$('#u-url').value.trim(),bigLimit:parseInt($('#u-big').value,10)||0,pinHash:await sha('pin:'+p)};
     chain={seq:0,lastHash:'GENESIS'};pending=[];server={entries:[],at:0};
     st('cfg',cfg);st('chain',chain);st('pending',pending);st('server',server);
@@ -387,7 +500,7 @@ async function sync(){
     const body=JSON.stringify(pending.length?{action:'push',child:cfg.child,device:cfg.device,entries:pending}:{action:'pull',child:cfg.child,device:cfg.device});
     const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
     const data=await r.json();
-    if(!data.ok)throw new Error(data.error||'回應錯誤');
+    if(!data.ok)throw new Error(data.error||'error');
     server={entries:data.entries||[],at:Date.now()};
     const ids=new Set(server.entries.map(e=>e.id));
     pending=pending.filter(p=>!ids.has(p.id));
@@ -401,13 +514,15 @@ document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');if(a&&cfg){openEntry(a.dataset.act);return}
   const row=e.target.closest('.row');if(row)openDetail(row.dataset.id);
 });
-$('#gear').onclick=()=>askPin(openSettings);
+$('#gear').onclick=()=>{if(cfg)askPin(openSettings)};
+$('#langBtn').onclick=openLang;
 window.addEventListener('online',sync);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
 setInterval(()=>{if(document.visibilityState==='visible')sync()},60000);
 
+applyStatic();
 if(!window.crypto||!crypto.subtle){
-  document.body.innerHTML='<p style="padding:24px">這個網址要用 https 開啟才能使用。</p>';
+  document.body.innerHTML=`<p style="padding:24px">${esc(t('https'))}</p>`;
 } else if(!cfg){openSetup()} else {render();sync()}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 </script>
